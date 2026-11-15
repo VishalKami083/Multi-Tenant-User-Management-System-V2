@@ -45,8 +45,6 @@ An email identifies one global user record. To add an existing user to another t
 ## API and security notes
 
 - Swagger/OpenAPI: [`docs/openapi.yaml`](docs/openapi.yaml)
-- Architecture/design: [`docs/DESIGN.md`](docs/DESIGN.md)
-- Entity relationship diagram: [`docs/ERD.md`](docs/ERD.md)
 - Consistent errors use `{"error":{"code":"...","message":"..."}}`; missing cross-tenant records return 404, missing/invalid credentials return 401, and insufficient permissions return 403.
 - User deletion removes only the tenant membership (soft delete), not the global user account.
 - Tenant suspension blocks all permission-guarded API operations except `tenant:update`, which lets a tenant admin reactivate it. A suspended tenant cannot authenticate new sessions.
