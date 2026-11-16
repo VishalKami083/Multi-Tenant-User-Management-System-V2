@@ -6,6 +6,11 @@ This diagram reflects the tables and constraints in
 `NULL` nullable columns. PostgreSQL defaults and check constraints are described
 below the diagram.
 
+![Entity relationship diagram](ERD.svg)
+
+The SVG above is the rendered diagram; the Mermaid definition below is its
+editable source.
+
 ```mermaid
 erDiagram
     TENANTS ||--o{ MEMBERSHIPS : contains

@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1410" viewBox="0 0 1800 1410" role="img" aria-labelledby="title description">
+  <title id="title">Multi-Tenant User Management System entity relationship diagram</title>
+  <desc id="description">PostgreSQL entities and foreign-key relationships for tenants, users, memberships, roles, permissions, refresh tokens, and audit logs.</desc>
+  <defs>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 30px; font-weight: 700; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .entity { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 8; }
+      .header { fill: #e8efff; }
+      .entity-name { font-size: 17px; font-weight: 700; letter-spacing: .5px; }
+      .field { font-family: Consolas, "Courier New", monospace; font-size: 14px; }
+      .constraint { font-size: 12px; fill: #475569; }
+      .relation { fill: none; stroke: #64748b; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .rel-label { font-size: 12px; font-weight: 600; fill: #334155; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .legend { font-size: 14px; fill: #334155; }
+    </style>
+  </defs>
+  <rect width="1800" height="1410" fill="#f8fafc"/>
+  <text class="title" x="70" y="46">Multi-Tenant User Management System</text>
+  <text class="subtitle" x="70" y="72">Entity relationship diagram — PostgreSQL schema (001_initial.sql)</text>
+
+  <g aria-label="Relationships">
+    <path class="relation" d="M280 290 V430"/>
+    <path class="relation" d="M490 205 H570 V345 H900 V430"/>
+    <path class="relation" d="M1310 205 H1230 V355 H1000 V430"/>
+    <path class="relation" d="M490 245 H545 V1080 H900 V1120"/>
+    <path class="relation" d="M1730 185 H1770 V1090 H1110 V1205"/>
+    <path class="relation" d="M70 130 H38 V1210 H70"/>
+    <path class="relation" d="M1730 120 H1760 V1360 H350 V1305"/>
+    <path class="relation" d="M490 520 H560 V700 H900 V790"/>
+    <path class="relation" d="M800 640 V790"/>
+    <path class="relation" d="M420 615 H500 V700 H1290 V870 H1310"/>
+    <path class="relation" d="M1520 590 V790"/>
+  </g>
+
+  <g aria-label="Tenants entity">
+    <rect class="entity" x="70" y="90" width="420" height="200"/>
+    <path class="header" d="M78 90 H482 Q490 90 490 98 V132 H70 V98 Q70 90 78 90 Z"/>
+    <text class="entity-name" x="88" y="118">TENANTS</text>
+    <text class="field" x="90" y="158">id              uuid          PK</text>
+    <text class="field" x="90" y="180">name            text</text>
+    <text class="field" x="90" y="202">code            text          UK</text>
+    <text class="field" x="90" y="224">status          text</text>
+    <text class="field" x="90" y="246">created_at      timestamptz</text>
+    <text class="field" x="90" y="268">updated_at      timestamptz</text>
+  </g>
+
+  <g aria-label="Users entity">
+    <rect class="entity" x="1310" y="90" width="420" height="200"/>
+    <path class="header" d="M1318 90 H1722 Q1730 90 1730 98 V132 H1310 V98 Q1310 90 1318 90 Z"/>
+    <text class="entity-name" x="1328" y="118">USERS</text>
+    <text class="field" x="1330" y="158">id              uuid          PK</text>
+    <text class="field" x="1330" y="180">name            text</text>
+    <text class="field" x="1330" y="202">email           text          UK</text>
+    <text class="field" x="1330" y="224">password_hash   text</text>
+    <text class="field" x="1330" y="246">created_at      timestamptz</text>
+    <text class="field" x="1330" y="268">updated_at      timestamptz</text>
+  </g>
+
+  <g aria-label="Roles entity">
+    <rect class="entity" x="70" y="430" width="420" height="185"/>
+    <path class="header" d="M78 430 H482 Q490 430 490 438 V472 H70 V438 Q70 430 78 430 Z"/>
+    <text class="entity-name" x="88" y="458">ROLES</text>
+    <text class="field" x="90" y="498">id              uuid          PK</text>
+    <text class="field" x="90" y="520">tenant_id       uuid          FK</text>
+    <text class="field" x="90" y="542">name            text</text>
+    <text class="field" x="90" y="564">description     text</text>
+    <text class="field" x="90" y="586">created_at      timestamptz</text>
+    <text class="constraint" x="90" y="604">UNIQUE (tenant_id, name), UNIQUE (tenant_id, id)</text>
+  </g>
+
+  <g aria-label="Memberships entity">
+    <rect class="entity" x="610" y="430" width="390" height="210"/>
+    <path class="header" d="M618 430 H992 Q1000 430 1000 438 V472 H610 V438 Q610 430 618 430 Z"/>
+    <text class="entity-name" x="628" y="458">MEMBERSHIPS</text>
+    <text class="field" x="630" y="498">tenant_id       uuid          PK, FK</text>
+    <text class="field" x="630" y="520">user_id         uuid          PK, FK</text>
+    <text class="field" x="630" y="542">display_name    text          NULL</text>
+    <text class="field" x="630" y="564">status          text</text>
+    <text class="field" x="630" y="586">created_at      timestamptz</text>
+    <text class="field" x="630" y="608">deleted_at      timestamptz   NULL</text>
+    <text class="constraint" x="630" y="630">PK (tenant_id, user_id)</text>
+  </g>
+
+  <g aria-label="Permissions entity">
+    <rect class="entity" x="1310" y="430" width="420" height="160"/>
+    <path class="header" d="M1318 430 H1722 Q1730 430 1730 438 V472 H1310 V438 Q1310 430 1318 430 Z"/>
+    <text class="entity-name" x="1328" y="458">PERMISSIONS</text>
+    <text class="field" x="1330" y="498">id              uuid          PK</text>
+    <text class="field" x="1330" y="520">name            text          UK</text>
+    <text class="field" x="1330" y="542">description     text</text>
+  </g>
+
+  <g aria-label="Membership roles entity">
+    <rect class="entity" x="610" y="790" width="420" height="180"/>
+    <path class="header" d="M618 790 H1022 Q1030 790 1030 798 V832 H610 V798 Q610 790 618 790 Z"/>
+    <text class="entity-name" x="628" y="818">MEMBERSHIP_ROLES</text>
+    <text class="field" x="630" y="858">tenant_id       uuid          PK, FK</text>
+    <text class="field" x="630" y="880">user_id         uuid          PK, FK</text>
+    <text class="field" x="630" y="902">role_id         uuid          PK, FK</text>
+    <text class="field" x="630" y="924">assigned_at     timestamptz</text>
+    <text class="constraint" x="630" y="950">FK (tenant_id,user_id) and (tenant_id,role_id)</text>
+  </g>
+
+  <g aria-label="Role permissions entity">
+    <rect class="entity" x="1310" y="790" width="420" height="160"/>
+    <path class="header" d="M1318 790 H1722 Q1730 790 1730 798 V832 H1310 V798 Q1310 790 1318 790 Z"/>
+    <text class="entity-name" x="1328" y="818">ROLE_PERMISSIONS</text>
+    <text class="field" x="1330" y="858">tenant_id       uuid          PK, FK</text>
+    <text class="field" x="1330" y="880">role_id         uuid          PK, FK</text>
+    <text class="field" x="1330" y="902">permission_id   uuid          PK, FK</text>
+    <text class="constraint" x="1330" y="930">FK (tenant_id,role_id) -> roles</text>
+  </g>
+
+  <g aria-label="Refresh tokens entity">
+    <rect class="entity" x="70" y="1120" width="420" height="185"/>
+    <path class="header" d="M78 1120 H482 Q490 1120 490 1128 V1162 H70 V1128 Q70 1120 78 1120 Z"/>
+    <text class="entity-name" x="88" y="1148">REFRESH_TOKENS</text>
+    <text class="field" x="90" y="1188">token_hash      bytea         PK</text>
+    <text class="field" x="90" y="1210">tenant_id       uuid          FK</text>
+    <text class="field" x="90" y="1232">user_id         uuid          FK</text>
+    <text class="field" x="90" y="1254">expires_at      timestamptz</text>
+    <text class="field" x="90" y="1276">revoked_at      timestamptz   NULL</text>
+    <text class="field" x="90" y="1298">created_at      timestamptz</text>
+  </g>
+
+  <g aria-label="Audit logs entity">
+    <rect class="entity" x="610" y="1120" width="500" height="200"/>
+    <path class="header" d="M618 1120 H1102 Q1110 1120 1110 1128 V1162 H610 V1128 Q610 1120 618 1120 Z"/>
+    <text class="entity-name" x="628" y="1148">AUDIT_LOGS</text>
+    <text class="field" x="630" y="1188">id              bigint        PK</text>
+    <text class="field" x="630" y="1210">tenant_id       uuid          FK, NULL</text>
+    <text class="field" x="630" y="1232">actor_id        uuid          FK, NULL</text>
+    <text class="field" x="630" y="1254">action          text</text>
+    <text class="field" x="630" y="1276">target_type     text</text>
+    <text class="field" x="630" y="1298">target_id       text</text>
+    <text class="field" x="880" y="1188">details         jsonb</text>
+    <text class="field" x="880" y="1210">created_at      timestamptz</text>
+  </g>
+
+  <g aria-label="Relationship cardinalities">
+    <text class="rel-label" x="288" y="315">1</text>
+    <text class="rel-label" x="288" y="420">0..*</text>
+    <text class="rel-label" x="510" y="196">tenant_id: 1 to 0..*</text>
+    <text class="rel-label" x="1180" y="348">user_id: 1 to 0..*</text>
+    <text class="rel-label" x="490" y="1058">tenant_id: 1 to 0..*</text>
+    <text class="rel-label" x="1400" y="1082">user: 1 to 0..* logs; actor optional per log</text>
+    <text class="rel-label" x="39" y="700">tenant_id: 1 to 0..*</text>
+    <text class="rel-label" x="1180" y="1350">user_id: 1 to 0..*</text>
+    <text class="rel-label" x="495" y="680">role_id: 1 to 0..*</text>
+    <text class="rel-label" x="812" y="710">membership: 1 to 0..*</text>
+    <text class="rel-label" x="950" y="686">role_id: 1 to 0..*</text>
+    <text class="rel-label" x="1530" y="700">permission: 1 to 0..*</text>
+  </g>
+
+  <text class="legend" x="70" y="1370">PK primary key  ·  FK foreign key  ·  UK unique  ·  NULL nullable</text>
+  <text class="legend" x="70" y="1392">Cardinalities are parent to child. Each audit log may omit its tenant and actor; each referenced parent may have zero or more logs.</text>
+</svg>
