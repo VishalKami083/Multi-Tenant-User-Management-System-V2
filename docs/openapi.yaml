@@ -71,6 +71,9 @@ paths:
     post:
       tags: [Authentication]
       summary: Log in to a tenant
+      description: >-
+        Failed attempts for known tenants are added to the tenant audit log
+        without storing the submitted email or password.
       operationId: login
       security: []
       requestBody:
@@ -336,6 +339,48 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/v1/memberships/{userID}:
+    patch:
+      tags: [Memberships]
+      summary: Suspend or reactivate a user membership
+      description: >-
+        Requires membership:update. Changes access in the authenticated tenant
+        without deleting the membership or changing the user's memberships in
+        other tenants. An administrator cannot suspend their own membership,
+        which prevents accidental self-lockout.
+      operationId: updateMembership
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, suspended]
+      responses:
+        '204':
+          description: Membership status updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/roles:
     get:
       tags: [Roles]

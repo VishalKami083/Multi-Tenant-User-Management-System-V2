@@ -80,6 +80,41 @@ func TestTenantIsolationAndMultiTenantMembership(t *testing.T) {
 	if total != 2 || len(users) != 2 {
 		t.Fatalf("user should be linkable to multiple tenants; got total=%d users=%d", total, len(users))
 	}
+	if err := repo.UpdateMembershipStatus(ctx, tenantB.ID, ownerB.ID, ownerA.ID, "suspended"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetUser(ctx, tenantB.ID, ownerA.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("suspended membership should not be retrievable, got %v", err)
+	}
+	permissions, err := repo.Permissions(ctx, tenantB.ID, ownerA.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(permissions) != 0 {
+		t.Fatalf("suspended membership should have no permissions, got %v", permissions)
+	}
+	if err := repo.UpdateMembershipStatus(ctx, tenantB.ID, ownerB.ID, ownerA.ID, "active"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetUser(ctx, tenantB.ID, ownerA.ID); err != nil {
+		t.Fatalf("reactivated membership should be retrievable, got %v", err)
+	}
+	if err := repo.RecordFailedLogin(ctx, "it-b-"+suffix); err != nil {
+		t.Fatal(err)
+	}
+	audit, err := repo.AuditLogs(ctx, tenantB.ID, 100, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundFailure := false
+	for _, entry := range audit {
+		if entry.Action == "auth.login_failed" {
+			foundFailure = entry.ActorID == nil && entry.TargetType == "authentication" && len(entry.Details) == 0
+		}
+	}
+	if !foundFailure {
+		t.Fatal("expected privacy-preserving failed-login audit entry")
+	}
 }
 
 func randomSuffix(t *testing.T) string {

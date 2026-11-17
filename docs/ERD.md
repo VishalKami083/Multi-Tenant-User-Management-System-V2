@@ -129,6 +129,9 @@ constrained to `active` or `suspended`. Permission names use the
 `resource:action` format. The migration also creates indexes for tenant-scoped
 role lookups, membership and role-assignment lookups, refresh-token expiry,
 and audit lookups by tenant or actor and time.
+The permission catalog includes `membership:update` for the reversible
+suspend/reactivate workflow. This is a permission seed, so it does not add a
+new entity or relationship to the ERD.
 
 The migration runner creates `schema_migrations` as operational bookkeeping;
 it is omitted from this domain ERD.

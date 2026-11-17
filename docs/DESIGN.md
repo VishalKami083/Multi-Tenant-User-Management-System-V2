@@ -3,15 +3,25 @@
 ## Overview
 
 The service is a Go REST API backed by PostgreSQL. Its request path follows
-`HTTP handler -> service -> repository -> PostgreSQL`; authentication and
-configuration are composed at startup in `cmd/api/main.go`.
+`domain HTTP handler -> domain service -> repository port -> PostgreSQL`;
+configuration and dependency composition happen at startup in `cmd/api/main.go`.
 
-- `internal/httpapi` defines the Chi routes, decodes JSON requests, applies
-  authentication and permission middleware, and writes JSON responses.
-- `internal/service` contains validation and workflows that combine repository
-  operations, including authentication, authorization, and permission caching.
-- `internal/repository` owns parameterized PostgreSQL queries and transaction
-  boundaries. Mutations that need an audit record write both in one transaction.
+- `internal/httpapi` composes Chi routes and applies shared authentication and
+  permission middleware. Domain handlers live under `internal/httpapi/{auth,
+  tenant,user,membership,access,audit}` and use shared decoding, response, and
+  identity helpers from `internal/httpx`.
+- `internal/domain/{auth,tenant,user,membership,access,audit}` owns domain
+  workflows and narrow repository interfaces. Shared identity, validation, and
+  error translation live in `internal/domain/shared`.
+- `internal/service` is a compatibility/composition facade that wires the
+  domain services to the PostgreSQL adapters.
+- `internal/repository/{tenant,user,auth,membership,access,audit}` contains
+  independent PostgreSQL adapters, each implementing the corresponding domain
+  repository interface with parameterized queries. Shared persistence models,
+  sentinel errors, and audit/error helpers live in `internal/repository/shared`.
+  The root `internal/repository` package composes these adapters behind the
+  existing `New(pool)` entry point; domain services depend on their narrow
+  interfaces, not on this composition facade.
 - `internal/security` issues and validates access tokens and creates and hashes
   refresh tokens.
 - `internal/database` configures the `pgxpool` connection pool and applies the
@@ -26,6 +36,11 @@ The database uses shared PostgreSQL tables. A global `users` row can belong to
 multiple organizations through `memberships`; membership state and display
 name are tenant-specific. Soft deletion sets `memberships.deleted_at`, leaving
 the global user and other tenant memberships intact.
+Suspension is reversible and tenant-scoped: it preserves the membership and
+role assignments but blocks login, refresh, listings, and permission checks
+until reactivation. Soft deletion remains a separate operation and clears the
+membership's role assignments. Administrators cannot suspend their own
+membership through the API, preventing accidental self-lockout.
 
 Protected requests derive both tenant and user identity from the verified JWT
 claims (`tid` and `uid`). Protected routes do not accept a tenant selector.
@@ -62,34 +77,49 @@ containing the permission catalog. The permission middleware returns 401 for
 missing or invalid access tokens and 403 when an authenticated identity lacks
 the required permission.
 
-The in-process permission cache is keyed by tenant and user. Membership and
-role changes invalidate affected entries; permission and tenant changes
-invalidate tenant entries. Entries are also bounded by the configured TTL
-(30 seconds by default), and the cache has a 10,000-entry limit. Tenant
-suspension blocks permission-guarded operations except the `tenant:update`
-permission path, which allows an administrator to reactivate the tenant.
-Login and refresh require an active tenant and membership.
+Each API instance has a bounded permission cache keyed by tenant and user.
+Membership and role mutations publish PostgreSQL `NOTIFY` events in the same
+transaction as the data change; every API instance listens on a dedicated
+connection and invalidates the affected member or tenant cache. If a listener
+reconnects after missing events, it clears the entire local cache before
+resuming. The configured TTL (30 seconds by default) bounds staleness during a
+listener outage, and each cache is limited to 10,000 entries. Tenant suspension
+blocks permission-guarded operations except the `tenant:update` permission
+path, which allows an administrator to reactivate the tenant. Login and refresh
+require an active tenant and membership. The `membership:update` permission
+controls membership suspension and reactivation.
 
 ## Audit and API behavior
 
 Audit records include the tenant, actor, action, target, JSON details, and
 timestamp. Tenant and actor references are nullable in the schema. Audit writes
-are synchronous with their associated mutations where applicable. The API
+are synchronous with their associated mutations where applicable. Successful
+logins are audited with the actor; failed logins for a known tenant are
+recorded without an actor or credential details, and unknown tenant codes do
+not create tenant audit records. The API
 returns a consistent error envelope and uses pagination limits for user and
 audit listings. The OpenAPI contract is in [openapi.yaml](openapi.yaml).
 
+Focused unit tests cover auth rejection/audit behavior, permission-cache
+invalidation and capacity handling, HTTP authorization, and input validation.
+Database-backed repository and service integration tests run only when
+`TEST_DATABASE_URL` is configured.
+
 ## Operations and trade-offs
 
-`pgxpool` provides bounded pooled connections; the maximum is configurable.
-Tenant-leading indexes support common scoped lookups. The implementation uses
-a single PostgreSQL database and synchronous audit writes for straightforward
-transactional behavior.
+`pgxpool` provides bounded pooled connections; the maximum is configurable per
+API instance. The Compose proxy routes traffic to API replicas and resolves the
+replica set dynamically. Scale the API with
+`docker compose up --build --scale api=3`; only the proxy publishes the
+application port.
 
-The permission cache is process-local, so invalidation is not shared across
-multiple API instances. Its TTL bounds staleness, but a horizontally scaled
-deployment that requires immediate cross-instance invalidation needs a shared
-cache or invalidation mechanism. Other production deployment concerns include
-edge rate limiting and account lockout, secret rotation, audit retention, and
+Each API replica also holds one dedicated PostgreSQL connection for
+`LISTEN/NOTIFY`. Size `DB_MAX_CONNS` and PostgreSQL `max_connections` for the
+sum of all replica pools, listener connections, migration/startup work, and
+other clients. PostgreSQL notifications are transactional but not durable;
+reconnecting instances clear their cache, and the cache TTL bounds stale data
+during listener outages. Other production deployment concerns include edge
+rate limiting and account lockout, secret rotation, audit retention, and
 controls on public tenant provisioning.
 
 ## Configuration

@@ -42,6 +42,12 @@ func main() {
 	repo := repository.New(pool)
 	tokens := security.NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	app := service.New(repo, tokens, cfg.PermissionCacheTTL)
+	go func() {
+		if err := database.ListenPermissionCacheInvalidations(ctx, cfg.DatabaseURL, logger, app.InvalidatePermissionCache); err != nil {
+			logger.Error("permission cache listener failed", "error", err)
+			stop()
+		}
+	}()
 	server := &http.Server{
 		Addr:              cfg.Address,
 		Handler:           httpapi.New(app, logger),
